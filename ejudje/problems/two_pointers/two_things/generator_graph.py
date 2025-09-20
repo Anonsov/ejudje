@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
-from scripts.DSL import IntGen, ArrayGen, Task, QueriesGen, StrGen, MatrixGen, ValuesWithSpaces
+from scripts.DSL import IntGen, ArrayGen, Task, QueriesGen, StrGen, MatrixGen, ValuesWithSpaces, NonWeightedGraphGen
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 tests_dir = os.path.join(BASE_DIR, 'tests')
 lists_tests = [f for f in os.listdir(tests_dir) if os.path.isfile(os.path.join(tests_dir, f))]
@@ -20,17 +20,16 @@ def tests_folder_maker():
         
 
 def generator_of_tests():
-    n = ValuesWithSpaces(
-        name="val", 
+    uv = ValuesWithSpaces(
+        name="uv", 
         quantity_vars=2,
         lo=1,
         hi=5
     )
-    mat = MatrixGen(name="mat", nm=n, square=False, lo=0, hi=1)
-    
+    graph = NonWeightedGraphGen(name="graph", uv=uv, lo=1, hi=13)
     task = Task(
-        variables=[n, mat],
-        order=["val", "mat"],
+        variables=[uv, graph],
+        order=["uv", "graph"],
         solution_file=os.path.join(BASE_DIR, "etalon_solution.py"),
         file_path_tests=tests_dir
     )

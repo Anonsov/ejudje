@@ -41,19 +41,47 @@ class IntGen:
 
 
 class ArrayGen:
-    def __init__(self, name: str, size: IntGen | int, lo: int, hi: int):
+    def __init__(self, name: str, size: IntGen | int, lo: int, hi: int, sorted=False):
         self.name = name
         self.size = size
         self.lo = lo
         self.hi = hi
-        
+        self.sorted = sorted
+                
     def generate(self, values):
         if isinstance(self.size, IntGen):
             size = values[self.size.name]
         else:
             size = self.size
-        return [random.randint(self.lo, self.hi) for _ in range(size)]
+        arr = [random.randint(self.lo, self.hi) for _ in range(size)]
+        if self.sorted:
+            return sorted(arr)
+        else:
+            return arr
 
+class ValuesWithSpaces:
+    def __init__(self, name, quantity_vars, lo, hi, sorted=False, unique=False):
+        self.name = name
+        self.quantity_vars = quantity_vars
+        self.lo = lo
+        self.hi = hi
+        self.sorted = sorted
+        self.unique = unique
+        
+    def generate(self, values=None):
+        quantity_vars = self.quantity_vars
+        if self.unique:
+            arr = set()
+            while len(arr) < quantity_vars:
+                arr.add(random.randint(self.lo, self.hi))
+        else:
+            arr = [random.randint(self.lo, self.hi) for _ in range(quantity_vars)]
+        
+        if self.sorted:
+           return sorted(arr)
+        else:
+            return arr
+        
 class QueriesGen:
     def __init__(self, name: str, q_var: IntGen | int, query_types: List[str] | str, constraints: dict):
         """ 
@@ -82,7 +110,6 @@ class QueriesGen:
                 x = random.randint(1, 1000)
                 queries.append(f"{i} {x}")
         return queries
-
 
 class StrGen:
     """
@@ -140,42 +167,113 @@ class StrGen:
             
 
 class MatrixGen:
-    def __init__(self, name: str, n: IntGen | int, m: IntGen | int, lo: int, hi: int, only_chars=False):
+    def __init__(self, name: str, nm: ValuesWithSpaces | List[int], lo: int, hi: int, only_chars=False, square=False):
         self.name = name
-        self.n = n
-        self.m = m
+        self.nm = nm
         self.lo = lo
         self.hi = hi
         self.only_chars = only_chars
+        self.square = square
         
     def generate(self, values):
-        if isinstance(self.n, IntGen):
-            n = values[self.n.name]
-        else:
-            n = self.n
+        if isinstance(self.nm, ValuesWithSpaces):
+            n = values[self.nm.name][0]
+            if self.square:
+                values[self.nm.name][1] = n
+                m = values[self.nm.name][1]
+            else:
+                m = values[self.nm.name][1]
+        elif isinstance(self.nm, list):
+            n = self.nm[0]
+            if self.square:
+                values[self.nm.name][1] = n
+                m = values[self.nm.name][1]
+            else:
+                m = self.nm[1]
             
-        if isinstance(self.m, IntGen):
-            m = values[self.m.name]
-        else:
-            m = self.m
-        result = []
-        if not self.only_chars:
-            for i in range(n):
-                row = []
-                for j in range(m):
-                    row.append(random.randint(self.lo, self.hi))
-                result.append(row)
-        #else condition will be in the future
-        return result
+        matrix = []
+        for i in range(n):
+            row = []
+            for j in range(m):
+                row.append(random.randint(self.lo, self.hi))
+            matrix.append(row)
+        
+        return matrix
+        
     
 class PermutationGen:
     pass
 
 class SetGen:
-    pass
+    def __init__(self, name: str, size: IntGen | int, lo: int, hi: int, sorted=False):
+        self.name = name 
+        self.size = size
+        self.lo = lo
+        self.hi = hi
+        self.sorted = sorted
+    
+    def generate(self, values=None):
+        if isinstance(self.size, IntGen):
+            size = values[self.size.name]
+        else:
+            size = self.size
 
-class GraphGen:
-    pass
+        arr = set()
+        while len(arr) < size:
+            arr.add(random.randint(self.lo, self.hi))
+        
+        if self.sorted:
+            return sorted(arr)
+        else:
+            return arr
+        
+class NonWeightedGraphGen:
+    def __init__(self, name: str, uv: ValuesWithSpaces | List[int], lo: int, hi: int):
+        self.name = name 
+        self.uv = uv
+        self.lo = lo
+        self.hi = hi
+
+    def generate(self, values):
+        if isinstance(self.uv, ValuesWithSpaces):
+            n = values[self.uv.name][0]
+            m = values[self.uv.name][1]
+            
+        elif isinstance(self.uv, list):
+            n = self.uv[0]
+            m = self.uv[1]
+        
+        if n <= 0:
+            logging.warning(f"Number of vertices must be positive, got {n}")
+            n = 1
+            if isinstance(self.uv, ValuesWithSpaces):
+                values[self.uv.name][0] = n
+        
+        max_edges = max(0, n * (n - 1) // 2)
+        
+        if m > max_edges:
+            logging.warning(f"Too many edges requested: {m} for {n} vertices. Max is {max_edges}")
+            m = max_edges
+            if isinstance(self.uv, ValuesWithSpaces):
+                values[self.uv.name][1] = m
+        all_edges = []
+        for i in range(1, n + 1):
+            for j in range(i + 1, n + 1):
+                all_edges.append((i, j))
+        
+        selected_edges = []
+        if m > 0:
+            selected_edges = random.sample(all_edges, m)
+        return [[u, v] for u, v in selected_edges]
+
+class WeightedGraph:
+    def __init__(self):
+        # self.head
+        pass
+    
+    
+    def generate(self, values):
+        pass
 
 class TreeGen:
     pass
@@ -206,12 +304,17 @@ class Task:
                 values[val.name] = val.generate(values)
             elif isinstance(val, MatrixGen):
                 values[val.name] = val.generate(values)
+            elif isinstance(val, ValuesWithSpaces):
+                values[val.name] = val.generate(values)
+            elif isinstance(val, SetGen):
+                values[val.name] = val.generate(values)
+            elif isinstance(val, NonWeightedGraphGen):
+                values[val.name] = val.generate(values)
             else:
                 logging.warning(f"Unsupported variable type for {val.name}")
                 raise NotImplementedError(f"Generation for {type(val)} is not implemented.")
             
         logging.info(f"Generated values for test {test_number}: {values}")
-        # print(values)
         lines = []
         for var_name in self.order:
             var_value = values[var_name]
@@ -220,13 +323,17 @@ class Task:
                     lines.append(" ".join(map(str, var_value)))
                 elif all(isinstance(x, str) for x in var_value):
                     lines.extend(var_value)
+                elif isinstance(var_value[0], list):
+                    for name in var_value:
+                        lines.append(" ".join(map(str, name)))
                 else:
                     raise ValueError(f"Unsupported list type in {var_name}")
             else:
                 lines.append(str(var_value))
-        print(lines)
+        # print(lines)
         input_str = "\n".join(lines)
         print(input_str)
+        # print(input_str)
         input_file = os.path.join(self.file_path_tests, f"input{test_number}.txt")
         with open(input_file, 'w') as f:
             f.write(input_str)

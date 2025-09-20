@@ -20,21 +20,21 @@ def tests_folder_maker():
         
 
 def generator_of_tests():
-    n = ValuesWithSpaces(
-        name="val", 
+    values = ValuesWithSpaces(
+        name="val",
         quantity_vars=2,
         lo=1,
-        hi=5
+        hi=10,
+        sorted=False
     )
-    mat = MatrixGen(name="mat", nm=n, square=False, lo=0, hi=1)
+    
     
     task = Task(
-        variables=[n, mat],
-        order=["val", "mat"],
+        variables=[values],
+        order=["val"],
         solution_file=os.path.join(BASE_DIR, "etalon_solution.py"),
         file_path_tests=tests_dir
     )
-    
     for i in range(1, 21):
         task.generate(i)
         
